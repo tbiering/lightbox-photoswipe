@@ -1,17 +1,36 @@
-var lbwpsInit = function() {
+var lbwpsInit = function(domUpdate) {
     var PhotoSwipe = window.PhotoSwipe,
         PhotoSwipeUI_Default = window.PhotoSwipeUI_Default;
 
     var links = document.querySelectorAll('a[data-lbwps-width]');
+
+    var originalBodyPaddingRight = '';
+    var originalBodyOverflow = '';
+
     for (var i = 0; i < links.length; i++) {
-        links[i].addEventListener('click', function (event) {
+        if (links[i].getAttribute('data-lbwps-handler') != '1') {
+            links[i].setAttribute('data-lbwps-handler', '1');
+            links[i].addEventListener('click', function (event) {
                 if (!PhotoSwipe || !PhotoSwipeUI_Default) {
                     return;
                 }
-
                 event.preventDefault();
                 openPhotoSwipe(false, 0, this, false, '');
             });
+        }
+    }
+
+    var hideScrollbar =  function() {
+        const scrollbarWidth = window.innerWidth - document.body.offsetWidth;
+        originalBodyPaddingRight = document.body.style.paddingRight;
+        originalBodyOverflow = document.body.style.overflow;
+        document.body.style.paddingRight = scrollbarWidth + 'px';
+        document.body.style.overflow = 'hidden';
+    }
+
+    var showScrollbar = function() {
+        document.body.style.paddingRight = originalBodyPaddingRight;
+        document.body.style.overflow = originalBodyOverflow;
     }
 
     var parseThumbnailElements = function(link, id) {
@@ -25,93 +44,126 @@ var lbwpsInit = function() {
             elements = document.querySelectorAll('a[data-lbwps-width][data-lbwps-gid="'+id+'"]');
         }
 
-        var number = 0;
         for (var i=0; i<elements.length; i++) {
             var element = elements[i];
-            var caption = null;
 
-            caption = element.getAttribute('data-lbwps-caption');
-
-            // Use attributes "data-caption-title" and "data-caption-desc" in the <a> element if available
-            if(caption == null) {
-                if(element.getAttribute('data-caption-title') != null) {
-                    caption = '<div class="pswp__caption__title">'+element.getAttribute('data-caption-title')+'</div>';
-                }
-
-                if(element.getAttribute('data-caption-desc') != null) {
-                    if(caption == null) caption = '';
-                    caption = caption + '<div class="pswp__caption__desc">'+element.getAttribute('data-caption-desc')+'</div>';
+            // Only use image if it was not added already
+            var useImage = true;
+            var linkHref = element.getAttribute('href');
+            for (var j=0; j<galleryItems.length; j++) {
+                if (galleryItems[j].src == linkHref) {
+                    useImage = false;
                 }
             }
 
-            // Attribute "aria-describedby" in the <a> element contains the ID of another element with the caption
-            if(caption == null && element.firstElementChild) {
-                var describedby = element.firstElementChild.getAttribute('aria-describedby');
-                if (describedby != null) {
-                    var description = document.getElementById(describedby);
-                    if (description != null) caption = description.innerHTML;
+            if (useImage) {
+                var caption = null;
+                var tabindex = element.getAttribute('tabindex');
+
+                if (tabindex == null) {
+                    tabindex = 0;
                 }
-            }
 
-            // Other variations
-            if(caption == null) {
-                var nextElement = element.nextElementSibling;
-                var parentElement = element.parentElement.nextElementSibling;
-                var parentElement2 = element.parentElement.parentElement.nextElementSibling;
-                var parentElement3 = element.parentElement.parentElement.parentElement.nextElementSibling;
+                caption = element.getAttribute('data-lbwps-caption');
 
-                if(nextElement != null) {
-                    if(nextElement.className === '.wp-caption-text') {
-                        caption = nextElement.innerHTML;
-                    } else if(nextElement && nextElement.nodeName === "FIGCAPTION") {
-                        caption = nextElement.innerHTML;
+                // Use attributes "data-caption-title" and "data-caption-desc" in the <a> element if available
+                if (caption == null) {
+                    if (element.getAttribute('data-caption-title') != null) {
+                        caption = '<div class="pswp__caption__title">' + element.getAttribute('data-caption-title') + '</div>';
                     }
-                } else if(parentElement != null) {
-                    if(parentElement.className === '.wp-caption-text') {
-                        caption = parentElement.innerHTML;
-                    } else if(parentElement.className === '.gallery-caption') {
-                        caption = parentElement.innerHTML;
-                    } else if(parentElement.nextElementSibling && parentElement.nextElementSibling.nodeName === "FIGCAPTION") {
-                        caption = parentElement.nextElementSibling.innerHTML;
+
+                    if (element.getAttribute('data-caption-desc') != null) {
+                        if (caption == null) caption = '';
+                        caption = caption + '<div class="pswp__caption__desc">' + element.getAttribute('data-caption-desc') + '</div>';
                     }
-                } else if(parentElement2 && parentElement2.nodeName === "FIGCAPTION") {
-                    caption = parentElement2.innerHTML;
-                } else if(parentElement3 && parentElement3.nodeName === "FIGCAPTION") {
-                    // This variant is used by Gutenberg gallery blocks
-                    caption = parentElement3.innerHTML;
+                }
+
+                // Attribute "aria-describedby" in the <a> element contains the ID of another element with the caption
+                if (caption == null && element.firstElementChild) {
+                    var describedby = element.firstElementChild.getAttribute('aria-describedby');
+                    if (describedby != null) {
+                        var description = document.getElementById(describedby);
+                        if (description != null) caption = description.innerHTML;
+                    }
+                }
+
+                // Other variations
+                if (caption == null) {
+                    var nextElement = element.nextElementSibling;
+                    var parentElement = element.parentElement.nextElementSibling;
+                    var parentElement2 = element.parentElement.parentElement.nextElementSibling;
+                    var parentElement3 = element.parentElement.parentElement.parentElement.nextElementSibling;
+
+                    if (nextElement != null) {
+                        if (nextElement.className === '.wp-caption-text') {
+                            caption = nextElement.innerHTML;
+                        } else if (nextElement && nextElement.nodeName === "FIGCAPTION") {
+                            caption = nextElement.innerHTML;
+                        }
+                    } else if (parentElement != null) {
+                        if (parentElement.className === '.wp-caption-text') {
+                            caption = parentElement.innerHTML;
+                        } else if (parentElement.className === '.gallery-caption') {
+                            caption = parentElement.innerHTML;
+                        } else if (parentElement.nextElementSibling && parentElement.nextElementSibling.nodeName === "FIGCAPTION") {
+                            caption = parentElement.nextElementSibling.innerHTML;
+                        }
+                    } else if (parentElement2 && parentElement2.nodeName === "FIGCAPTION") {
+                        caption = parentElement2.innerHTML;
+                    } else if (parentElement3 && parentElement3.nodeName === "FIGCAPTION") {
+                        // This variant is used by Gutenberg gallery blocks
+                        caption = parentElement3.innerHTML;
+                    }
+                }
+
+                if (caption == null) {
+                    caption = element.getAttribute('title');
+                }
+
+                if (caption == null && lbwpsOptions.use_alt == '1' && element.firstElementChild) {
+                    caption = element.firstElementChild.getAttribute('alt');
+                }
+
+                if (element.getAttribute('data-lbwps-description') != null) {
+                    if (caption == null) caption = '';
+                    caption = caption + '<div class="pswp__description">' + element.getAttribute('data-lbwps-description') + '</div>';
+                }
+
+                galleryItems.push({
+                    src: element.getAttribute('href'),
+                    msrc: element.getAttribute('href'),
+                    w: element.getAttribute('data-lbwps-width'),
+                    h: element.getAttribute('data-lbwps-height'),
+                    title: caption,
+                    exif: element.getAttribute('data-lbwps-exif'),
+                    getThumbBoundsFn: false,
+                    showHideOpacity: true,
+                    el: element,
+                    tabindex: tabindex
+                });
+            }
+        }
+
+        // Sort items by tabindex
+        galleryItems.sort(function(a, b) {
+            var indexa = parseInt(a.tabindex);
+            var indexb = parseInt(b.tabindex);
+            if(indexa > indexb) {
+                return 1;
+            }
+            if(indexa < indexb) {
+                return -1;
+            }
+            return 0;
+        });
+
+        // Determine current selected item
+        if (link != null) {
+            for (var i = 0; i < galleryItems.length; i++) {
+                if (galleryItems[i].el.getAttribute('href') == link.getAttribute('href')) {
+                    index = i;
                 }
             }
-
-            if(caption == null) {
-                caption = element.getAttribute('title');
-            }
-
-            if(caption == null && lbwpsOptions.use_alt == '1' && element.firstElementChild) {
-                caption = element.firstElementChild.getAttribute('alt');
-            }
-
-            if(element.getAttribute('data-lbwps-description') != null) {
-                if(caption == null) caption = '';
-                caption = caption + '<div class="pswp__description">'+element.getAttribute('data-lbwps-description')+'</div>';
-            }
-
-            galleryItems.push({
-                src: element.getAttribute('href'),
-                msrc: element.getAttribute('href'),
-                w: element.getAttribute('data-lbwps-width'),
-                h: element.getAttribute('data-lbwps-height'),
-                title: caption,
-                exif: element.getAttribute('data-lbwps-exif'),
-                getThumbBoundsFn: false,
-                showHideOpacity: true,
-                el: element
-            });
-
-            if(link === element) {
-                index = number;
-            }
-
-            number++;
         }
 
         return [galleryItems, parseInt(index, 10)];
@@ -260,9 +312,18 @@ var lbwpsInit = function() {
             });
         }
 
-        gallery.init();
+        gallery.listen('destroy', function() {
+            if (lbwpsOptions.hide_scrollbars == '1') {
+                showScrollbar();
+            }
+            window.lbwpsPhotoSwipe = null;
+        })
 
         window.lbwpsPhotoSwipe = gallery;
+        if (lbwpsOptions.hide_scrollbars == '1') {
+            hideScrollbar();
+        }
+        gallery.init();
     };
 
     window.lbwpsCopyToClipboard = function(str) {
@@ -285,13 +346,15 @@ var lbwpsInit = function() {
         }
     };
 
-    var hashData = photoswipeParseHash();
-    if(hashData.pid && hashData.gid) {
-        var returnUrl = '';
-        if (typeof(hashData.returnurl) !== 'undefined') {
-            returnUrl = hashData.returnurl;
+    if(true !== domUpdate) {
+        var hashData = photoswipeParseHash();
+        if (hashData.pid && hashData.gid) {
+            var returnUrl = '';
+            if (typeof (hashData.returnurl) !== 'undefined') {
+                returnUrl = hashData.returnurl;
+            }
+            openPhotoSwipe(hashData.pid, hashData.gid, null, true, returnUrl);
         }
-        openPhotoSwipe(hashData.pid, hashData.gid, null, true, returnUrl);
     }
 };
 
@@ -368,5 +431,23 @@ var lbwpsReady = (function () {
 
 lbwpsReady(function() {
     window.lbwpsPhotoSwipe = null;
-    lbwpsInit();
+    lbwpsInit(false);
+
+    var mutationObserver = null;
+    if (typeof MutationObserver !== 'undefined') {
+        var mutationObserver = new MutationObserver(function (mutations) {
+            if (window.lbwpsPhotoSwipe === null) {
+                var nodesAdded = false;
+                for (var i = 0; i < mutations.length; i++) {
+                    if ('childList' === mutations[i].type) {
+                        nodesAdded = true;
+                    }
+                };
+                if (nodesAdded) {
+                    lbwpsInit(true);
+                }
+            }
+        });
+        mutationObserver.observe(document.querySelector('body'), {childList: true, subtree: true, attributes: false});
+    }
 });
